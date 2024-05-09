@@ -19,7 +19,8 @@ class Predictor(BasePredictor):
 
     def predict(
         self,
-        image: Path = Input(description="Grayscale input image")
+        image: Path = Input(description="Image of the shirt to be worn over the person's body."),
+        enable_cloth_guidance: bool = Input(description="Whether to enable cloth guidance or not.")
     ) -> Path:
         """Run a single prediction on the model"""
         device = "cuda"
@@ -28,19 +29,37 @@ class Predictor(BasePredictor):
             "model_path": "./checkpoints/magic_clothing_768_vitonhd_joint.safetensors",
             "pipe_path": "SG161222/Realistic_Vision_V4.0_noVAE",
             "cloth_path": image,
-            "enable_cloth_guidance": True,
+            "enable_cloth_guidance": enable_cloth_guidance,
         }
+
+        print('Predicting with the following arguments:')
+        print(args)
+
+        print("Loading Cloth Image")
 
         cloth_image = Image.open(args['cloth_path']).convert("RGB")
 
+        print("Loading VAE")
+
         vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(dtype=torch.float16)
+        
+        print("Loading Diffusion Pipeline")
+
         if args['enable_cloth_guidance']:
             pipe = OmsDiffusionPipeline.from_pretrained(args['pipe_path'], vae=vae, torch_dtype=torch.float16)
+            print("Loaded OmsDiffusionPipeline")
         else:
             pipe = StableDiffusionPipeline.from_pretrained(args['pipe_path'], vae=vae, torch_dtype=torch.float16)
+            print("Loaded StableDiffusionPipeline")
         pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
+        print("Loading Cloth Adapter")
+
         full_net = ClothAdapter(pipe, args['model_path'], device, args['enable_cloth_guidance'], False)
+
+        print("Generating Image")
         images = full_net.generate(cloth_image)
+
+        print("Saving Image")
 
         return images[0]
