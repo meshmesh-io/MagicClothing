@@ -18,7 +18,7 @@ class Predictor(BasePredictor):
     def predict(
         self,
         image: Path = Input(description="Image of the shirt to be worn over the person's body."),
-        mask: Path | None = Input(description="Image of the mask (black bg, white mask).", default=None),
+        mask: Path = Input(description="Image of the mask (black bg, white mask).", default=None),
         prompt: str = Input(description="Describe the model you would like to generate.", default="a photography of a model"),
         negative_prompt: str = Input(default=""),
         enable_cloth_guidance: bool = Input(description="Whether to enable cloth guidance or not.", default=False),
