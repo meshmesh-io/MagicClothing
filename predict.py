@@ -21,6 +21,7 @@ class Predictor(BasePredictor):
         mask: Path = Input(description="Image of the mask (black bg, white mask).", default=None),
         prompt: str = Input(description="Describe the model you would like to generate.", default="a photography of a model"),
         negative_prompt: str = Input(default=""),
+        num_images: int = Input(default=1, ge=1, le=4),
         enable_cloth_guidance: bool = Input(description="Whether to enable cloth guidance or not.", default=False),
         seed: int = Input(default=-1),
         guidance_scale: float = Input(default=2.5),
@@ -28,7 +29,7 @@ class Predictor(BasePredictor):
         steps: int = Input(default=20),
         height: int = Input(default=768),
         width: int = Input(default=576),
-    ) -> Path:
+    ) -> list[Path]:
         """Run a single prediction on the model"""
         device = "cuda"
 
@@ -55,15 +56,17 @@ class Predictor(BasePredictor):
         pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
         print("Loading Cloth Adapter")
-
         full_net = ClothAdapter(pipe, model_path, device, enable_cloth_guidance, False)
 
-        print("Generating Image")
-        images, _ = full_net.generate(cloth_image, mask_image, prompt, "best quality, high quality", 1, negative_prompt, seed, guidance_scale, cloth_guidance_scale, steps, height, width)
+        print("Generating Image/s")
+        images, _ = full_net.generate(cloth_image, mask_image, prompt, "best quality, high quality", num_images, negative_prompt, seed, guidance_scale, cloth_guidance_scale, steps, height, width)
 
         print("Saving Image")
-        out_path = Path(tempfile.mkdtemp()) / "out.png"
-        images[0].save(str(out_path))
+        output = []
+        for i, image in enumerate(images):
+            out_path = Path(tempfile.mkdtemp()) / f"out-{i}.png"
+            image.save(str(out_path))
+            output.append(out_path)
 
         print("Done!")
-        return out_path
+        return output
