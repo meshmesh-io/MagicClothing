@@ -58,7 +58,7 @@ class Predictor(BasePredictor):
         images, _ = full_net.generate(cloth_image, None, prompt, "best quality, high quality", 1, None, -1, 7.5, 2.5, 20, 576, 768)
 
         print("Saving Image")
-        out_path = Path(tempfile.mkdtemp() / "out.png")
+        out_path = Path(tempfile.mkdtemp()) / "out.png"
         images[0].save(str(out_path))
 
         print("Done!")
