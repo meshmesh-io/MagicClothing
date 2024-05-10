@@ -1,12 +1,10 @@
 from cog import BasePredictor, Input, Path
-import os.path
-import pdb
 
+import tempfile
 import torch
 from diffusers import UniPCMultistepScheduler, AutoencoderKL
 from diffusers.pipelines import StableDiffusionPipeline
 from PIL import Image
-import argparse
 
 from garment_adapter.garment_diffusion import ClothAdapter
 from pipelines.OmsDiffusionPipeline import OmsDiffusionPipeline
@@ -20,7 +18,8 @@ class Predictor(BasePredictor):
     def predict(
         self,
         image: Path = Input(description="Image of the shirt to be worn over the person's body."),
-        enable_cloth_guidance: bool = Input(description="Whether to enable cloth guidance or not.")
+        enable_cloth_guidance: bool = Input(description="Whether to enable cloth guidance or not.", default=False),
+        prompt: str = Input(description="Describe the model you would like to generate.", default="a photography of a model"),
     ) -> Path:
         """Run a single prediction on the model"""
         device = "cuda"
@@ -36,13 +35,11 @@ class Predictor(BasePredictor):
         print(args)
 
         print("Loading Cloth Image")
-
         cloth_image = Image.open(args['cloth_path']).convert("RGB")
 
         print("Loading VAE")
-
         vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(dtype=torch.float16)
-        
+
         print("Loading Diffusion Pipeline")
 
         if args['enable_cloth_guidance']:
@@ -58,8 +55,11 @@ class Predictor(BasePredictor):
         full_net = ClothAdapter(pipe, args['model_path'], device, args['enable_cloth_guidance'], False)
 
         print("Generating Image")
-        images = full_net.generate(cloth_image)
+        images, _ = full_net.generate(cloth_image, None, prompt, "best quality, high quality", 1, None, -1, 7.5, 2.5, 20, 576, 768)
 
         print("Saving Image")
+        out_path = Path(tempfile.mkdtemp() / "out.png")
+        images[0].save(str(out_path))
 
-        return images[0]
+        print("Done!")
+        return out_path
